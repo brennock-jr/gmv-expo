@@ -4,18 +4,24 @@
     "slug": "gmv-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "gmvapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/logo.png",
+      "bundleIdentifier": "com.jplvf.gmvexpo",
+      "buildNumber": "1.0.0",
+      "supportsTablet": false,
+      "backgroundColor": "#ffffff",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/favicon.png",
+        "backgroundImage": "./assets/images/camo-dark.jpg"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.gmvapp"
@@ -47,6 +53,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2a988f39-9b59-4b5f-921e-d415f747f5a6"
+      }
     }
   }
 }
