@@ -32,6 +32,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let unsubscribeProfile = null;
+    let timer = setTimeout(() => {
+      // Safety timeout to prevent infinite loading state if Firestore listener hangs
+      setLoading(false);
+    }, 4000);
 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
@@ -45,6 +49,7 @@ export function AuthProvider({ children }) {
       if (firebaseUser) {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         unsubscribeProfile = onSnapshot(userDocRef, (userDoc) => {
+          clearTimeout(timer);
           if (userDoc.exists()) {
             setProfile(userDoc.data());
           } else {
@@ -52,16 +57,20 @@ export function AuthProvider({ children }) {
           }
           setLoading(false);
         }, (error) => {
+          clearTimeout(timer);
           console.error("Erro ao escutar perfil do Firestore em tempo real:", error);
+          setProfile(null);
           setLoading(false);
         });
       } else {
+        clearTimeout(timer);
         setProfile(null);
         setLoading(false);
       }
     });
 
     return () => {
+      clearTimeout(timer);
       unsubscribeAuth();
       if (unsubscribeProfile) {
         unsubscribeProfile();

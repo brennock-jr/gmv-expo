@@ -13,41 +13,39 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === '(auth)';
 
-    if (!user) {
-      // Se não estiver logado, vai para a tela de login
+    if (!user || !profile) {
+      // Se não estiver logado ou perfil não for encontrado, direciona para o login
       if (!inAuthGroup) {
         router.replace('/(auth)/login');
       }
     } else {
       // Se logado e perfil carregado
-      if (profile) {
-        // Proteção da área administrativa
-        if (segments[1] === 'admin' && profile.role !== 'administrador') {
-          router.replace('/(app)/dashboard');
-          return;
-        }
+      // Proteção da área administrativa
+      if (segments[1] === 'admin' && profile.role !== 'administrador') {
+        router.replace('/(app)/dashboard');
+        return;
+      }
 
-        if (!profile.approved) {
-          // Se não estiver aprovado, força a tela de aprovação pendente
-          if (segments[1] !== 'pending') {
-            router.replace('/(app)/pending');
-          }
-        } else if (!profile.onboarded) {
-          // Se aprovado mas com ficha médica pendente, força o preenchimento
-          if (segments[1] !== 'onboarding') {
-            router.replace('/(app)/onboarding');
-          }
-        } else {
-          // Se aprovado e preencheu a ficha médica, vai para o dashboard
-          if (inAuthGroup || segments[1] === 'onboarding' || segments[1] === 'pending') {
-            router.replace('/(app)/dashboard');
-          }
+      if (!profile.approved) {
+        // Se não estiver aprovado, força a tela de aprovação pendente
+        if (segments[1] !== 'pending') {
+          router.replace('/(app)/pending');
+        }
+      } else if (!profile.onboarded) {
+        // Se aprovado mas com ficha médica pendente, força o preenchimento
+        if (segments[1] !== 'onboarding') {
+          router.replace('/(app)/onboarding');
+        }
+      } else {
+        // Se aprovado e preencheu a ficha médica, vai para o dashboard
+        if (inAuthGroup || segments[1] === 'onboarding' || segments[1] === 'pending') {
+          router.replace('/(app)/dashboard');
         }
       }
     }
   }, [user, profile, loading, segments, router]);
 
-  if (loading || (user && !profile)) {
+  if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2563eb" />
