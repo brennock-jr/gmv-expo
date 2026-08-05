@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "gmv-app",
+    "name": "Grupo Missões Voluntários",
     "slug": "gmv-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "gmvapp",
@@ -10,7 +10,7 @@
     "ios": {
       "icon": "./assets/images/logo.png",
       "bundleIdentifier": "com.jplvf.gmvexpo",
-      "buildNumber": "1.0.0",
+      "buildNumber": "1.0.1",
       "supportsTablet": false,
       "backgroundColor": "#ffffff",
       "infoPlist": {
@@ -19,23 +19,29 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/favicon.png",
+        "backgroundColor": "#099122",
+        "foregroundImage": "./assets/images/logo.png",
         "backgroundImage": "./assets/images/camo-dark.jpg"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.gmvapp"
+      "package": "shop.jplvf.gmvapp"
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
+    },
+    "splash": {
+      "image": "./assets/images/favicon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#099122"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "image": "./assets/images/favicon.png",
+          "backgroundColor": "#099122",
           "android": {
             "image": "./assets/images/favicon.png",
             "imageWidth": 76
@@ -45,7 +51,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/favicon.png",
+          "icon": "./assets/images/logo.png",
           "color": "#c29014"
         }
       ]

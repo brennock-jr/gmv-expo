@@ -10,19 +10,21 @@ import {
   Image,
   ImageBackground
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const { login, savedEmail } = useAuth();
+  const [emailInput, setEmailInput] = useState(null);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login } = useAuth();
   const router = useRouter();
+  const email = emailInput ?? savedEmail ?? '';
 
   const handleLogin = async () => {
     setError('');
@@ -82,7 +84,7 @@ export default function Login() {
                 placeholder="usuario@email.com"
                 iconName="mail-outline"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={setEmailInput}
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
@@ -96,6 +98,11 @@ export default function Login() {
                 onChangeText={setPassword}
                 autoCapitalize="none"
               />
+
+              <View style={styles.sessionBadge}>
+                <Ionicons name="shield-checkmark-outline" size={16} color="#8fa882" />
+                <Text style={styles.sessionBadgeText}>Sessão mantida por 30 dias a partir do último acesso</Text>
+              </View>
 
               <Button 
                 title="Fazer Login" 
@@ -208,6 +215,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  sessionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 16,
+    justifyContent: 'center',
+  },
+  sessionBadgeText: {
+    color: '#8fa882',
+    fontSize: 12,
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
