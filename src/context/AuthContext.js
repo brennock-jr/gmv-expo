@@ -73,8 +73,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let unsubscribeProfile = null;
-    let timer = setTimeout(() => {
-      // Safety timeout to prevent infinite loading state if Firestore listener hangs
+    const timer = setTimeout(() => {
+      // Safety timeout para evitar que a tela de carregamento trave indefinidamente por queda de rede
       setLoading(false);
     }, 4000);
 
@@ -91,16 +91,14 @@ export function AuthProvider({ children }) {
           }
 
           if (elapsed > THIRTY_DAYS_MS) {
-            // Sessão expirou (> 30 dias desde o último acesso)
             console.log('Sessão expirada (mais de 30 dias desde o último acesso). Limpando credenciais.');
             await clearStoredCredentials();
             await signOut(auth);
           } else {
-            // Sessão válida: atualiza a data de último acesso (+30 dias renovados a partir de agora)
             storedSession.lastAccess = now;
             await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(storedSession));
 
-            // Tenta reautenticar se o Firebase não estiver ativo
+            // Tenta reautenticar apenas se o Firebase Auth ainda não tiver restaurado a sessão ativa
             if (!auth.currentUser && storedSession.email && storedSession.password) {
               try {
                 await signInWithEmailAndPassword(auth, storedSession.email, storedSession.password);

@@ -24,8 +24,8 @@ service cloud.firestore {
         isAdmin() || 
         // O voluntário pode atualizar sua ficha, mas NÃO pode alterar seu cargo ou status de aprovação
         (request.auth.uid == userId 
-         && request.resource.data.role == resource.data.role 
-         && request.resource.data.approved == resource.data.approved)
+         && request.resource.data.get('role', 'voluntario') == resource.data.get('role', 'voluntario') 
+         && request.resource.data.get('approved', false) == resource.data.get('approved', false))
       );
       
       // Apenas administradores podem excluir perfis

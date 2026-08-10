@@ -86,6 +86,13 @@ export default function Dashboard() {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
+
+  // Estados de Histórico de Missões Passadas e Edição de Grupo
+  const [pastMissionsVisible, setPastMissionsVisible] = useState(false);
+  const [editGroupModalVisible, setEditGroupModalVisible] = useState(false);
+  const [quickGroupInput, setQuickGroupInput] = useState('');
+  const [quickGroupError, setQuickGroupError] = useState('');
+  const [savingQuickGroup, setSavingQuickGroup] = useState(false);
   
   const [selectedMedicalProfile, setSelectedMedicalProfile] = useState(null);
   const [medicalVisible, setMedicalVisible] = useState(false);
@@ -205,6 +212,30 @@ export default function Dashboard() {
       setProfileError("Falha ao gravar no banco de dados.");
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  // Lógica de Edição Rápida de Grupo pelo Perfil
+  const handleSaveQuickGroup = async () => {
+    setQuickGroupError('');
+    if (!quickGroupInput.trim()) {
+      setQuickGroupError("O nome do grupo é obrigatório.");
+      return;
+    }
+    setSavingQuickGroup(true);
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        group: quickGroupInput.trim()
+      });
+      await reloadProfile();
+      Alert.alert("Sucesso", "Grupo atualizado com sucesso.");
+      setEditGroupModalVisible(false);
+    } catch (err) {
+      console.error("Erro ao atualizar grupo:", err);
+      setQuickGroupError("Falha ao gravar alteração de grupo no banco de dados.");
+    } finally {
+      setSavingQuickGroup(false);
     }
   };
 
@@ -664,6 +695,9 @@ export default function Dashboard() {
   };
 
   const filteredMissions = missions.filter(m => {
+    // Ocultar missões cujas datas já passaram do quadro principal e de escalas ativas
+    if (isMissionInPast(m.date)) return false;
+
     if (filter === 'mine') {
       return m.participants?.includes(user?.uid);
     }
@@ -744,7 +778,7 @@ export default function Dashboard() {
             )}
           </View>
 
-          {/* Botão Nova Missão (Abaixo da Barra de Abas Amarela) */}
+          {/* Botão Nova Missão e Histórico (Abaixo da Barra de Abas Amarela) */}
           {profile?.role === 'administrador' && activeTab === 'missions' && (
             <View style={styles.createMissionBar}>
               <TouchableOpacity 
@@ -754,6 +788,15 @@ export default function Dashboard() {
               >
                 <Ionicons name="add-circle-outline" size={18} color="#000000" />
                 <Text style={styles.createMissionBtnText}>Nova Missão</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.historyMissionBtn}
+                onPress={() => setPastMissionsVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="time-outline" size={18} color="#c29014" />
+                <Text style={styles.historyMissionBtnText}>Histórico</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -777,8 +820,16 @@ export default function Dashboard() {
                     onPress={() => setFilter('mine')}
                   >
                     <Text style={[styles.filterText, filter === 'mine' && styles.filterTextActive]}>
-                      Minhas Escalas ({missions.filter(m => m.participants?.includes(user?.uid)).length})
+                      Minhas Escalas ({missions.filter(m => m.participants?.includes(user?.uid) && !isMissionInPast(m.date)).length})
                     </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.historyFilterBtn}
+                    onPress={() => setPastMissionsVisible(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="time-outline" size={18} color="#c29014" />
                   </TouchableOpacity>
                 </View>
               )}
@@ -929,9 +980,21 @@ export default function Dashboard() {
                     <Ionicons name="person-circle-sharp" size={72} color="#8fa882" style={styles.profileAvatar} />
                     <Text style={styles.profileNameText}>{profile.name?.toUpperCase()}</Text>
                     <Text style={styles.profileEmailText}>{profile.email}</Text>
-                    <Text style={{ color: '#c29014', fontSize: 13, fontWeight: '700', marginTop: 4 }}>
-                      GRUPO: {profile.group || 'Não informado'}
-                    </Text>
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setQuickGroupInput(profile.group || '');
+                        setQuickGroupError('');
+                        setEditGroupModalVisible(true);
+                      }}
+                      style={styles.groupClickableArea}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="people-outline" size={14} color="#c29014" />
+                      <Text style={styles.groupClickableText}>
+                        GRUPO: <Text style={styles.groupClickableHighlight}>{profile.group || 'Clique para definir'}</Text>
+                      </Text>
+                      <Ionicons name="pencil-outline" size={12} color="#c29014" />
+                    </TouchableOpacity>
                     <View style={[
                       styles.profileBadge, 
                       profile.role === 'administrador' ? styles.roleBadgeAdmin : styles.roleBadgeVoluntario
@@ -996,12 +1059,20 @@ export default function Dashboard() {
 
               {/* SEÇÃO DE MISSÕES DO OPERADOR / ADMINISTRADOR */}
               <View style={styles.userMissionsSection}>
-                <Text style={styles.userMissionsTitle}>Minhas Missões</Text>
+                <View style={styles.userMissionsHeaderRow}>
+                  <Text style={styles.userMissionsTitle}>Escalas Confirmadas</Text>
+                  <TouchableOpacity 
+                    onPress={() => setPastMissionsVisible(true)}
+                    style={styles.historyClockHeaderBtn}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="time-outline" size={16} color="#c29014" />
+                    <Text style={styles.historyClockHeaderBtnText}>Histórico</Text>
+                  </TouchableOpacity>
+                </View>
                 
-                {/* Escalas Confirmadas (Ativas) */}
-                <Text style={styles.missionSubSectionHeader}>Escalas Confirmadas</Text>
                 {missions.filter(m => m.participants?.includes(user?.uid) && !isMissionInPast(m.date)).length === 0 ? (
-                  <Text style={styles.noMissionsText}>Nenhuma missão agendada.</Text>
+                  <Text style={styles.noMissionsText}>Nenhuma missão agendada no momento.</Text>
                 ) : (
                   missions.filter(m => m.participants?.includes(user?.uid) && !isMissionInPast(m.date)).map(m => (
                     <TouchableOpacity 
@@ -1013,30 +1084,6 @@ export default function Dashboard() {
                       <Ionicons name="checkbox-outline" size={20} color="#10b981" />
                       <View style={styles.userMissionInfo}>
                         <Text style={styles.userMissionName}>{m.title}</Text>
-                        <Text style={styles.userMissionDate}>
-                          {formatDate(m.date)} | {m.location}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward-outline" size={16} color="#606a5c" />
-                    </TouchableOpacity>
-                  ))
-                )}
-
-                {/* Histórico de Missões (Passadas) */}
-                <Text style={styles.missionSubSectionHeader}>Histórico de Missões</Text>
-                {missions.filter(m => m.participants?.includes(user?.uid) && isMissionInPast(m.date)).length === 0 ? (
-                  <Text style={styles.noMissionsText}>Nenhuma missão concluída no histórico.</Text>
-                ) : (
-                  missions.filter(m => m.participants?.includes(user?.uid) && isMissionInPast(m.date)).map(m => (
-                    <TouchableOpacity 
-                      key={m.id} 
-                      style={[styles.userMissionRow, styles.userMissionRowPast]}
-                      onPress={() => handleViewDetails(m)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="checkmark-circle-outline" size={20} color="#606a5c" />
-                      <View style={styles.userMissionInfo}>
-                        <Text style={[styles.userMissionName, styles.userMissionNamePast]}>{m.title}</Text>
                         <Text style={styles.userMissionDate}>
                           {formatDate(m.date)} | {m.location}
                         </Text>
@@ -1550,6 +1597,155 @@ export default function Dashboard() {
                         <ActivityIndicator size="small" color="#000000" />
                       ) : (
                         <Text style={styles.confirmActionBtnText}>Confirmar</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </Modal>
+
+          {/* ================= MODAL: HISTÓRICO DE MISSÕES CONCLUÍDAS ================= */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={pastMissionsVisible}
+            onRequestClose={() => setPastMissionsVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <Ionicons name="time-outline" size={22} color="#c29014" />
+                    <Text style={styles.modalHeaderTitle}>HISTÓRICO DE MISSÕES</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setPastMissionsVisible(false)} style={styles.modalCloseBtn}>
+                    <Ionicons name="close" size={24} color="#ffffff" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+                  {missions.filter(m => isMissionInPast(m.date)).length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                      <Ionicons name="time-outline" size={48} color="#606a5c" style={styles.emptyIcon} />
+                      <Text style={styles.emptyTitle}>Sem Histórico de Operações</Text>
+                      <Text style={styles.emptyText}>
+                        Nenhuma missão concluída foi registrada no sistema até o momento.
+                      </Text>
+                    </View>
+                  ) : (
+                    missions
+                      .filter(m => isMissionInPast(m.date))
+                      .sort((a, b) => {
+                        const dA = a.date.toDate ? a.date.toDate() : new Date(a.date);
+                        const dB = b.date.toDate ? b.date.toDate() : new Date(b.date);
+                        return dB - dA;
+                      })
+                      .map((m) => {
+                        const isParticipant = m.participants?.includes(user?.uid);
+                        return (
+                          <TouchableOpacity
+                            key={m.id}
+                            style={styles.pastMissionCard}
+                            onPress={() => {
+                              handleViewDetails(m);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.pastMissionHeader}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.pastMissionTitle}>{m.title?.toUpperCase()}</Text>
+                                <Text style={styles.pastMissionCategory}>{m.category?.toUpperCase() || 'MISSÃO'}</Text>
+                              </View>
+                              {isParticipant && (
+                                <View style={styles.participantBadge}>
+                                  <Ionicons name="checkmark-circle" size={14} color="#10b981" />
+                                  <Text style={styles.participantBadgeText}>Participou</Text>
+                                </View>
+                              )}
+                            </View>
+
+                            <View style={styles.pastMissionDetails}>
+                              <View style={styles.infoRow}>
+                                <Ionicons name="calendar-outline" size={14} color="#606a5c" style={styles.infoIcon} />
+                                <Text style={styles.infoText}>Data: <Text style={styles.boldText}>{formatDateTime(m.date)}</Text></Text>
+                              </View>
+                              <View style={styles.infoRow}>
+                                <Ionicons name="pin-outline" size={14} color="#606a5c" style={styles.infoIcon} />
+                                <Text style={styles.infoText}>Local: <Text style={styles.boldText}>{m.location || 'QG GMV'}</Text></Text>
+                              </View>
+                              <View style={styles.infoRow}>
+                                <Ionicons name="people-outline" size={14} color="#606a5c" style={styles.infoIcon} />
+                                <Text style={styles.infoText}>Efetivo: <Text style={styles.boldText}>{(m.participants || []).length} voluntários</Text></Text>
+                              </View>
+                            </View>
+
+                            <View style={styles.pastMissionFooter}>
+                              <Text style={styles.viewDetailsLink}>Ver detalhes da missão</Text>
+                              <Ionicons name="chevron-forward-outline" size={16} color="#c29014" />
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })
+                  )}
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
+
+          {/* ================= MODAL: ALTERAR GRUPO / ORGANIZAÇÃO ================= */}
+          <Modal
+            animationType="fade"
+            transparent={true}
+            visible={editGroupModalVisible}
+            onRequestClose={() => setEditGroupModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, styles.approvalModalContent]}>
+                <View style={[styles.modalHeader, styles.medicalModalHeader]}>
+                  <Text style={{ color: '#c29014', fontSize: 14, fontWeight: '900', letterSpacing: 1.5 }}>
+                    ALTERAR GRUPO / ORGANIZAÇÃO
+                  </Text>
+                  <TouchableOpacity onPress={() => setEditGroupModalVisible(false)} style={styles.modalCloseBtn}>
+                    <Ionicons name="close" size={24} color="#ffffff" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.approvalFormContainer}>
+                  <Text style={styles.approvalInstruction}>
+                    Informe a nova organização ou grupo ao qual você pertence:
+                  </Text>
+
+                  {quickGroupError ? <Text style={styles.errorBanner}>{quickGroupError}</Text> : null}
+
+                  <Input
+                    label="Nome do Grupo *"
+                    placeholder="Ex: GMV, Visitante, Grupo Tático..."
+                    iconName="people-outline"
+                    value={quickGroupInput}
+                    onChangeText={setQuickGroupInput}
+                  />
+
+                  <View style={styles.approvalActionsRow}>
+                    <TouchableOpacity 
+                      style={[styles.actionBtn, styles.cancelActionBtn]}
+                      onPress={() => setEditGroupModalVisible(false)}
+                      disabled={savingQuickGroup}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.cancelActionBtnText}>Cancelar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={[styles.actionBtn, styles.confirmActionBtn]}
+                      onPress={handleSaveQuickGroup}
+                      disabled={savingQuickGroup}
+                      activeOpacity={0.8}
+                    >
+                      {savingQuickGroup ? (
+                        <ActivityIndicator size="small" color="#000000" />
+                      ) : (
+                        <Text style={styles.confirmActionBtnText}>Salvar Grupo</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -2530,5 +2726,150 @@ const styles = StyleSheet.create({
     color: '#606a5c',
     fontSize: 11,
     marginTop: 2,
+  },
+
+  // ========== NOVOS ESTILOS PARA HISTÓRICO E GRUPO EDICIONAL ==========
+  historyMissionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(194, 144, 20, 0.12)',
+    borderWidth: 1.5,
+    borderColor: '#c29014',
+    borderRadius: 6,
+    paddingHorizontal: 14,
+    height: 44,
+  },
+  historyMissionBtnText: {
+    color: '#c29014',
+    fontSize: 12,
+    fontWeight: '850',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  historyFilterBtn: {
+    width: 44,
+    height: 44,
+    backgroundColor: 'rgba(194, 144, 20, 0.12)',
+    borderWidth: 1.5,
+    borderColor: '#c29014',
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  groupClickableArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    backgroundColor: 'rgba(194, 144, 20, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(194, 144, 20, 0.3)',
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  groupClickableText: {
+    color: '#c29014',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  groupClickableHighlight: {
+    color: '#ffffff',
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  userMissionsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(194, 144, 20, 0.2)',
+    paddingBottom: 8,
+  },
+  historyClockHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(194, 144, 20, 0.15)',
+    borderWidth: 1,
+    borderColor: '#c29014',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  historyClockHeaderBtnText: {
+    color: '#c29014',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  pastMissionCard: {
+    backgroundColor: '#131612',
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#3d453a',
+    padding: 16,
+    marginBottom: 12,
+  },
+  pastMissionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2b3128',
+    paddingBottom: 8,
+    marginBottom: 10,
+  },
+  pastMissionTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  pastMissionCategory: {
+    color: '#c29014',
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 2,
+    letterSpacing: 1,
+  },
+  participantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: '#10b981',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  participantBadgeText: {
+    color: '#10b981',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  pastMissionDetails: {
+    gap: 6,
+    marginBottom: 10,
+  },
+  pastMissionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#2b3128',
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  viewDetailsLink: {
+    color: '#c29014',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -1,9 +1,8 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeAuth, getReactNativePersistence } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApp, getApps, initializeApp } from "firebase/app";
+import { getReactNativePersistence, initializeAuth } from "firebase/auth";
+import { initializeFirestore } from "firebase/firestore";
 
-// TODO: Substitua pelas credenciais do seu projeto Firebase Console
 const firebaseConfig = {
   apiKey: "AIzaSyBheQQp7XtA8zDWgdAnb7gmZrdmsJiB3F8",
   authDomain: "gmv-app-96403.firebaseapp.com",

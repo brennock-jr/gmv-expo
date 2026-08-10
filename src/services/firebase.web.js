@@ -1,7 +1,8 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { initializeFirestore } from "firebase/firestore";
 
+//Nossas credenciais de usuário
 const firebaseConfig = {
   apiKey: "AIzaSyBheQQp7XtA8zDWgdAnb7gmZrdmsJiB3F8",
   authDomain: "gmv-app-96403.firebaseapp.com",
@@ -11,7 +12,7 @@ const firebaseConfig = {
   appId: "1:868905514129:web:f5e3e1c7ca828b2f82bb30",
   measurementId: "G-3XLJRLCK0V"
 };
-
+//Criamos o objeto app
 let app;
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);

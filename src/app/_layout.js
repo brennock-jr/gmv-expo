@@ -37,8 +37,8 @@ function RootLayoutNav() {
           router.replace('/(app)/onboarding');
         }
       } else {
-        // Se aprovado e preencheu a ficha médica, vai para o dashboard
-        if (inAuthGroup || segments[1] === 'onboarding' || segments[1] === 'pending') {
+        // Se aprovado e preencheu a ficha médica, direciona para o dashboard se não estiver no grupo (app) ativo
+        if (segments[0] !== '(app)' || inAuthGroup || segments[1] === 'onboarding' || segments[1] === 'pending') {
           router.replace('/(app)/dashboard');
         }
       }
