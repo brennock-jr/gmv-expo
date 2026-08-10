@@ -28,22 +28,31 @@ export default function Login() {
 
   const handleLogin = async () => {
     setError('');
-    if (!email || !password) {
+    const cleanEmail = email ? email.trim() : '';
+    const cleanPassword = password ? password.trim() : '';
+
+    if (!cleanEmail || !cleanPassword) {
       setError('Por favor, preencha todos os campos.');
       return;
     }
 
     setLoading(true);
     try {
-      await login(email, password);
+      await login(cleanEmail, cleanPassword);
     } catch (err) {
-      console.error(err);
+      console.error("Erro ao autenticar no Firebase Auth:", err.code, err.message);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         setError('E-mail ou senha incorretos.');
       } else if (err.code === 'auth/invalid-email') {
-        setError('Formato de e-mail inválido.');
+        setError('Formato de e-mail inválido. Verifique se digitou corretamente.');
+      } else if (err.code === 'auth/user-disabled') {
+        setError('Esta conta foi desativada.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Muitas tentativas sem sucesso. Aguarde alguns instantes.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Falha de conexão com a internet. Verifique sua rede.');
       } else {
-        setError('Erro ao fazer login. Tente novamente mais tarde.');
+        setError(err.message ? `Erro: ${err.message}` : 'Erro ao fazer login. Tente novamente.');
       }
     } finally {
       setLoading(false);

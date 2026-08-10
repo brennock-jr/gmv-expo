@@ -167,17 +167,19 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
-    const credential = await signInWithEmailAndPassword(auth, email, password);
-    await saveSessionCredentials(email, password);
-    setSavedEmail(email);
+    const cleanEmail = email ? email.trim() : '';
+    const credential = await signInWithEmailAndPassword(auth, cleanEmail, password);
+    await saveSessionCredentials(cleanEmail, password);
+    setSavedEmail(cleanEmail);
     await fetchProfile(credential.user.uid);
   };
 
   const register = async (name, email, password, group) => {
-    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    const cleanEmail = email ? email.trim() : '';
+    const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     const uid = credential.user.uid;
-    await saveSessionCredentials(email, password);
-    setSavedEmail(email);
+    await saveSessionCredentials(cleanEmail, password);
+    setSavedEmail(cleanEmail);
     
     const newProfile = {
       uid,

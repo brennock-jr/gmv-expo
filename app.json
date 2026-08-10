@@ -4,23 +4,23 @@
     "slug": "gmv-app",
     "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/images/favicon.png",
     "scheme": "gmvapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/logo.png",
+      "icon": "./assets/images/favicon.png",
       "bundleIdentifier": "com.jplvf.gmvexpo",
       "buildNumber": "1.0.1",
       "supportsTablet": false,
-      "backgroundColor": "#ffffff",
+      "backgroundColor": "#2d3a29",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#099122",
-        "foregroundImage": "./assets/images/logo.png",
+        "backgroundColor": "#2d3a29",
+        "foregroundImage": "./assets/images/favicon.png",
         "backgroundImage": "./assets/images/camo-dark.jpg"
       },
       "predictiveBackGestureEnabled": false,
@@ -31,19 +31,19 @@
       "favicon": "./assets/images/favicon.png"
     },
     "splash": {
-      "image": "./assets/images/favicon.png",
+      "image": "./assets/images/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#099122"
+      "backgroundColor": "#2d3a29"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/favicon.png",
-          "backgroundColor": "#099122",
+          "image": "./assets/images/logo.png",
+          "backgroundColor": "#2d3a29",
           "android": {
-            "image": "./assets/images/favicon.png",
+            "image": "./assets/images/logo.png",
             "imageWidth": 76
           }
         }
@@ -51,7 +51,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/logo.png",
+          "icon": "./assets/images/favicon.png",
           "color": "#c29014"
         }
       ],

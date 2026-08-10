@@ -19,10 +19,12 @@ import { useRouter } from 'expo-router';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { db, auth } from '../../../services/firebase';
+import { useAuth } from '../../../context/AuthContext';
 import Input from '../../../components/Input';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Members() {
+  const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [search, setSearch] = useState('');
@@ -41,6 +43,7 @@ export default function Members() {
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
     const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
       const list = [];
       snapshot.forEach((doc) => {
@@ -51,12 +54,14 @@ export default function Members() {
       setUsers(list);
       setLoadingUsers(false);
     }, (err) => {
-      console.error("Erro ao buscar operadores:", err);
+      if (err.code !== 'permission-denied') {
+        console.error("Erro ao buscar operadores:", err);
+      }
       setLoadingUsers(false);
     });
 
     return unsubscribe;
-  }, []);
+  }, [user]);
 
   const handleOpenApproval = (user) => {
     setApprovalTarget(user);

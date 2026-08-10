@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import {
   addDoc,
@@ -98,6 +99,37 @@ export default function Dashboard() {
   const [medicalVisible, setMedicalVisible] = useState(false);
   const [loadingMedical, setLoadingMedical] = useState(false);
 
+  // Estados da Legislação e Documentos GMV
+  const [legislationList, setLegislationList] = useState([]);
+  const [loadingLegislation, setLoadingLegislation] = useState(true);
+  const [legislationModalVisible, setLegislationModalVisible] = useState(false);
+  const [uploadFormVisible, setUploadFormVisible] = useState(false);
+  const [docTitle, setDocTitle] = useState('');
+  const [driveUrl, setDriveUrl] = useState('');
+  const [savingDoc, setSavingDoc] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
+  // Sincronizar Coleção "documentos" do Firestore em Tempo Real
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'documentos'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docsList = [];
+      snapshot.forEach((docSnap) => {
+        docsList.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setLegislationList(docsList);
+      setLoadingLegislation(false);
+    }, (err) => {
+      if (err.code !== 'permission-denied') {
+        console.error("Erro ao buscar documentos do Firestore:", err);
+      }
+      setLoadingLegislation(false);
+    });
+
+    return unsubscribe;
+  }, [user]);
+
   // Estados do CRUD de Missão (Admin)
   const [formVisible, setFormVisible] = useState(false);
   const [editingMission, setEditingMission] = useState(null);
@@ -113,6 +145,7 @@ export default function Dashboard() {
   const [savingForm, setSavingForm] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
     const q = query(collection(db, 'missions'), orderBy('date', 'asc'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -123,12 +156,14 @@ export default function Dashboard() {
       setMissions(missionsList);
       setLoadingMissions(false);
     }, (error) => {
-      console.error("Erro ao buscar missões do Firestore:", error);
+      if (error.code !== 'permission-denied') {
+        console.error("Erro ao buscar missões do Firestore:", error);
+      }
       setLoadingMissions(false);
     });
 
     return unsubscribe;
-  }, []);
+  }, [user]);
 
   // Iniciar edição do perfil preenchendo os estados imperativamente
   const handleStartEditing = () => {
@@ -153,7 +188,7 @@ export default function Dashboard() {
 
   // Buscar lista de voluntários (apenas para Administradores)
   useEffect(() => {
-    if (profile?.role !== 'administrador') return;
+    if (!user || profile?.role !== 'administrador') return;
 
     const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
       const list = [];
@@ -165,12 +200,14 @@ export default function Dashboard() {
       setUsers(list);
       setLoadingUsers(false);
     }, (err) => {
-      console.error("Erro ao buscar operadores:", err);
+      if (err.code !== 'permission-denied') {
+        console.error("Erro ao buscar operadores:", err);
+      }
       setLoadingUsers(false);
     });
 
     return unsubscribe;
-  }, [profile]);
+  }, [user, profile]);
 
   // Lógica de Salvar o Próprio Perfil (Ficha Médica)
   const handleSaveProfile = async () => {
@@ -239,6 +276,57 @@ export default function Dashboard() {
     }
   };
 
+  // Manipulação de Legislação e Documentos (Links do Google Drive)
+  const handlePublishDocument = async () => {
+    setUploadError('');
+    if (!docTitle.trim()) {
+      setUploadError("Por favor, digite o nome do documento.");
+      return;
+    }
+    if (!driveUrl.trim()) {
+      setUploadError("Por favor, informe o link do documento do Google Drive.");
+      return;
+    }
+
+    setSavingDoc(true);
+
+    try {
+      await addDoc(collection(db, 'documentos'), {
+        title: docTitle.trim(),
+        driveUrl: driveUrl.trim(),
+        createdAt: new Date().toISOString(),
+        createdBy: user.uid,
+        createdByName: profile?.name || 'Administrador'
+      });
+
+      Alert.alert("Sucesso", "Documento publicado com sucesso na Legislação GMV.");
+      setSavingDoc(false);
+      setUploadFormVisible(false);
+      setDocTitle('');
+      setDriveUrl('');
+    } catch (err) {
+      console.error("Erro ao publicar documento no Firestore:", err);
+      setUploadError("Falha ao gravar o documento no banco de dados.");
+      setSavingDoc(false);
+    }
+  };
+
+  const handleOpenDocument = async (docItem) => {
+    try {
+      const targetUrl = docItem.driveUrl || docItem.fileUrl;
+      if (targetUrl) {
+        await WebBrowser.openBrowserAsync(targetUrl, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN
+        });
+      } else {
+        Alert.alert("Erro", "Link do documento indisponível.");
+      }
+    } catch (err) {
+      console.error("Erro ao abrir leitor de documentos:", err);
+      Alert.alert("Erro", "Não foi possível abrir o link do documento.");
+    }
+  };
+
   // Lógica de Aprovação de Voluntário por Senha
   const handleOpenApproval = (userToApprove) => {
     setApprovalTarget(userToApprove);
@@ -291,7 +379,7 @@ export default function Dashboard() {
 
   // Monitorar carregamento de participantes para a missão aberta
   useEffect(() => {
-    if (!selectedMission || !detailsVisible || profile?.role !== 'administrador') {
+    if (!user || !selectedMission || !detailsVisible || profile?.role !== 'administrador') {
       return;
     }
 
@@ -304,12 +392,14 @@ export default function Dashboard() {
       setParticipants(list);
       setLoadingParticipants(false);
     }, (err) => {
-      console.error("Erro ao carregar inscritos:", err);
+      if (err.code !== 'permission-denied') {
+        console.error("Erro ao carregar inscritos:", err);
+      }
       setLoadingParticipants(false);
     });
 
     return unsubscribe;
-  }, [selectedMission, detailsVisible, profile?.role]);
+  }, [user, selectedMission, detailsVisible, profile?.role]);
 
   const formatDate = (dateVal) => {
     if (!dateVal) return '';
@@ -704,6 +794,10 @@ export default function Dashboard() {
     return true;
   });
 
+  if (!user || !profile) {
+    return null;
+  }
+
   return (
     <ImageBackground 
       source={require('../../../assets/images/camo-dark.jpg')} 
@@ -726,9 +820,22 @@ export default function Dashboard() {
                 </Text>
               )}
             </View>
-            <TouchableOpacity onPress={logout} style={styles.logoutBtn} activeOpacity={0.7}>
-              <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-            </TouchableOpacity>
+            <View style={styles.headerRightActions}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setUploadFormVisible(false);
+                  setLegislationModalVisible(true);
+                }} 
+                style={styles.legislationBtn} 
+                activeOpacity={0.7}
+              >
+                <Ionicons name="document-text-outline" size={24} color="#c29014" />
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={logout} style={styles.logoutBtn} activeOpacity={0.7}>
+                <Ionicons name="log-out-outline" size={24} color="#ef4444" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Barra de Abas Amarela */}
@@ -848,7 +955,7 @@ export default function Dashboard() {
                   renderItem={({ item }) => (
                     <MissionCard
                       mission={item}
-                      userId={user.uid}
+                      userId={user?.uid}
                       userRole={profile?.role}
                       onSignUp={handleSignUp}
                       onCancel={handleCancel}
@@ -1750,6 +1857,167 @@ export default function Dashboard() {
                     </TouchableOpacity>
                   </View>
                 </View>
+              </View>
+            </View>
+          </Modal>
+
+          {/* ================= MODAL: LEGISLAÇÃO GMV E PUBLICAR DOCUMENTO ================= */}
+          <Modal
+            animationType="fade"
+            transparent={true}
+            visible={legislationModalVisible}
+            onRequestClose={() => {
+              if (!savingDoc) {
+                setUploadFormVisible(false);
+                setLegislationModalVisible(false);
+              }
+            }}
+          >
+            <View style={styles.legislationModalOverlay}>
+              <View style={styles.modalContent}>
+                {uploadFormVisible ? (
+                  /* Form de Inclusão de Novo Documento */
+                  <>
+                    <View style={styles.modalHeader}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                        <Ionicons name="link-outline" size={22} color="#c29014" />
+                        <Text style={styles.modalHeaderTitle}>PUBLICAR NOVO DOCUMENTO</Text>
+                      </View>
+
+                      {!savingDoc && (
+                        <TouchableOpacity 
+                          onPress={() => setUploadFormVisible(false)} 
+                          style={styles.modalCloseBtn}
+                        >
+                          <Ionicons name="arrow-back" size={24} color="#ffffff" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+                      <Text style={styles.approvalInstruction}>
+                        Informe o nome e o link público de compartilhamento do Google Drive para disponibilizar o documento no acervo da Legislação GMV:
+                      </Text>
+
+                      {uploadError ? <Text style={styles.errorBanner}>{uploadError}</Text> : null}
+
+                      <Input
+                        label="Nome do Documento *"
+                        placeholder="Ex: Estatuto Social GMV 2026"
+                        iconName="document-text-outline"
+                        value={docTitle}
+                        onChangeText={setDocTitle}
+                      />
+
+                      <Input
+                        label="Link do Google Drive *"
+                        placeholder="Ex: https://drive.google.com/file/d/..."
+                        iconName="link-outline"
+                        value={driveUrl}
+                        onChangeText={setDriveUrl}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+
+                      <View style={styles.approvalActionsRow}>
+                        <TouchableOpacity 
+                          style={[styles.actionBtn, styles.cancelActionBtn]}
+                          onPress={() => setUploadFormVisible(false)}
+                          disabled={savingDoc}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.cancelActionBtnText}>Cancelar</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                          style={[styles.actionBtn, styles.confirmActionBtn]}
+                          onPress={handlePublishDocument}
+                          disabled={savingDoc}
+                          activeOpacity={0.8}
+                        >
+                          {savingDoc ? (
+                            <ActivityIndicator size="small" color="#000000" />
+                          ) : (
+                            <Text style={styles.confirmActionBtnText}>Publicar Documento</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </ScrollView>
+                  </>
+                ) : (
+                  /* Lista do Acervo Legislativo */
+                  <>
+                    <View style={styles.modalHeader}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                        <Ionicons name="document-text-outline" size={22} color="#c29014" />
+                        <Text style={styles.modalHeaderTitle}>LEGISLAÇÃO GMV</Text>
+                      </View>
+
+                      {/* Botão '+' para Administradores no Canto Superior */}
+                      {profile?.role === 'administrador' && (
+                        <TouchableOpacity 
+                          onPress={() => {
+                            setDocTitle('');
+                            setDriveUrl('');
+                            setUploadError('');
+                            setUploadFormVisible(true);
+                          }} 
+                          style={styles.addLegislationBtn}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="add" size={24} color="#000000" />
+                        </TouchableOpacity>
+                      )}
+
+                      <TouchableOpacity 
+                        onPress={() => {
+                          setUploadFormVisible(false);
+                          setLegislationModalVisible(false);
+                        }} 
+                        style={styles.modalCloseBtn}
+                      >
+                        <Ionicons name="close" size={24} color="#ffffff" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+                      {loadingLegislation ? (
+                        <View style={styles.loaderContainer}>
+                          <ActivityIndicator size="large" color="#c29014" />
+                          <Text style={styles.loaderText}>Carregando acervo legislativo...</Text>
+                        </View>
+                      ) : legislationList.length === 0 ? (
+                        <View style={styles.emptyContainer}>
+                          <Ionicons name="document-text-outline" size={48} color="#606a5c" style={styles.emptyIcon} />
+                          <Text style={styles.emptyTitle}>Sem Documentos Publicados</Text>
+                          <Text style={styles.emptyText}>
+                            Nenhum documento ou estatuto foi publicado na Legislação GMV até o momento.
+                          </Text>
+                        </View>
+                      ) : (
+                        legislationList.map((docItem) => (
+                          <TouchableOpacity
+                            key={docItem.id}
+                            style={styles.legislationCard}
+                            onPress={() => handleOpenDocument(docItem)}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.legislationIconBox}>
+                              <Ionicons name="logo-google" size={24} color="#c29014" />
+                            </View>
+                            <View style={styles.legislationInfo}>
+                              <Text style={styles.legislationTitle}>{docItem.title?.toUpperCase()}</Text>
+                              <Text style={styles.legislationDate}>
+                                Enviado em {formatDateTime(docItem.createdAt)}
+                              </Text>
+                            </View>
+                            <Ionicons name="open-outline" size={20} color="#c29014" />
+                          </TouchableOpacity>
+                        ))
+                      )}
+                    </ScrollView>
+                  </>
+                )}
               </View>
             </View>
           </Modal>
@@ -2868,6 +3136,115 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   viewDetailsLink: {
+    color: '#c29014',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  // ========== ESTILOS DA LEGISLAÇÃO GMV ==========
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legislationBtn: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(194, 144, 20, 0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(194, 144, 20, 0.3)',
+  },
+  legislationModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(12, 13, 12, 0.60)', // 60% de transparência sobre a tela
+  },
+  addLegislationBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#c29014',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  legislationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#131612',
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#3d453a',
+    padding: 14,
+    marginBottom: 12,
+    gap: 12,
+  },
+  legislationIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+    backgroundColor: 'rgba(194, 144, 20, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(194, 144, 20, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  legislationInfo: {
+    flex: 1,
+  },
+  legislationTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  legislationDate: {
+    color: '#8fa882',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  legislationFileName: {
+    color: '#606a5c',
+    fontSize: 10,
+    marginTop: 2,
+  },
+  uploadModalContent: {
+    height: 'auto',
+    maxHeight: '85%',
+  },
+  filePickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#131612',
+    borderWidth: 1.5,
+    borderColor: '#3d453a',
+    borderRadius: 6,
+    padding: 14,
+    gap: 12,
+    marginBottom: 16,
+  },
+  filePickerText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  filePickerSubtext: {
+    color: '#8fa882',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(194, 144, 20, 0.12)',
+    borderWidth: 1,
+    borderColor: '#c29014',
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 16,
+  },
+  progressText: {
     color: '#c29014',
     fontSize: 12,
     fontWeight: '700',

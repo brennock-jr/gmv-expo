@@ -1,8 +1,8 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
 
-//Nossas credenciais de usuário
+// Nossas credenciais de usuário
 const firebaseConfig = {
   apiKey: "AIzaSyBheQQp7XtA8zDWgdAnb7gmZrdmsJiB3F8",
   authDomain: "gmv-app-96403.firebaseapp.com",
@@ -12,19 +12,23 @@ const firebaseConfig = {
   appId: "1:868905514129:web:f5e3e1c7ca828b2f82bb30",
   measurementId: "G-3XLJRLCK0V"
 };
-//Criamos o objeto app
+
 let app;
+let auth;
+let db;
+
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
+  // No ambiente Web, a persistência padrão do navegador é gerenciada automaticamente pelo Firebase Auth
+  auth = getAuth(app);
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+  });
 } else {
   app = getApp();
+  auth = getAuth(app);
+  db = getFirestore(app);
 }
 
-// No ambiente Web, a persistência padrão do navegador é gerenciada automaticamente pelo Firebase Auth
-const auth = getAuth(app);
-
-const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-});
-
 export { app, auth, db };
+
