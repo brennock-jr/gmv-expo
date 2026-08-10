@@ -169,49 +169,36 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
-    setLoading(true);
-    try {
-      const credential = await signInWithEmailAndPassword(auth, email, password);
-      await saveSessionCredentials(email, password);
-      setSavedEmail(email);
-      await fetchProfile(credential.user.uid);
-    } catch (error) {
-      setLoading(false);
-      throw error;
-    }
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    await saveSessionCredentials(email, password);
+    setSavedEmail(email);
+    await fetchProfile(credential.user.uid);
   };
 
   const register = async (name, email, password, group) => {
-    setLoading(true);
-    try {
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = credential.user.uid;
-      await saveSessionCredentials(email, password);
-      setSavedEmail(email);
-      
-      const newProfile = {
-        uid,
-        name,
-        email,
-        group: group.trim(),
-        role: 'voluntario', // Todos os novos cadastros são obrigatoriamente voluntários. Admins devem ser promovidos manualmente no banco.
-        approved: false, // Necessita de aprovação manual do administrador do banco de dados para acessar o app
-        onboarded: false, // Ficha médica ainda não preenchida
-        createdAt: new Date().toISOString(),
-        medicalInfo: null
-      };
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = credential.user.uid;
+    await saveSessionCredentials(email, password);
+    setSavedEmail(email);
+    
+    const newProfile = {
+      uid,
+      name,
+      email,
+      group: group.trim(),
+      role: 'voluntario', // Todos os novos cadastros são obrigatoriamente voluntários. Admins devem ser promovidos manualmente no banco.
+      approved: false, // Necessita de aprovação manual do administrador do banco de dados para acessar o app
+      onboarded: false, // Ficha médica ainda não preenchida
+      createdAt: new Date().toISOString(),
+      medicalInfo: null
+    };
 
-      // Salvar perfil no Firestore
-      await setDoc(doc(db, 'users', uid), newProfile);
-      setProfile(newProfile);
-    } catch (error) {
-      setLoading(false);
-      throw error;
-    }
+    // Salvar perfil no Firestore
+    await setDoc(doc(db, 'users', uid), newProfile);
+    setProfile(newProfile);
   };
 
   const logout = async () => {
-    setLoading(true);
     try {
       await clearStoredCredentials();
       await signOut(auth);
@@ -219,8 +206,6 @@ export function AuthProvider({ children }) {
       setProfile(null);
     } catch (error) {
       console.error("Erro ao deslogar:", error);
-    } finally {
-      setLoading(false);
     }
   };
 

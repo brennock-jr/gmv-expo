@@ -1,44 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
-  ImageBackground, 
-  ActivityIndicator, 
-  Alert, 
-  Platform,
-  Modal,
-  ScrollView,
-  Image,
-  TextInput,
-  Switch
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext';
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  doc, 
-  updateDoc, 
-  arrayUnion, 
-  arrayRemove, 
-  setDoc, 
-  deleteDoc, 
+import { Ionicons } from '@expo/vector-icons';
+import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import {
+  addDoc,
+  arrayRemove,
+  arrayUnion,
+  collection,
+  deleteDoc,
+  doc,
   getDoc,
   getDocs,
-  addDoc
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  updateDoc
 } from 'firebase/firestore';
-import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
-import { db, auth } from '../../services/firebase';
-import MissionCard from '../../components/MissionCard';
-import Input from '../../components/Input';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  ImageBackground,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/Button';
-import { Ionicons } from '@expo/vector-icons';
-import { requestNotificationPermissions, scheduleMissionReminders, cancelMissionReminders } from '../../utils/notifications';
+import Input from '../../components/Input';
+import MissionCard from '../../components/MissionCard';
+import { useAuth } from '../../context/AuthContext';
+import { auth, db } from '../../services/firebase';
+import { cancelMissionReminders, requestNotificationPermissions, scheduleMissionReminders } from '../../utils/notifications';
 
 const CATEGORIES = ['Rapel', 'Trilha', 'Airsoft', 'Acampamento', 'Outra Atividade'];
 
